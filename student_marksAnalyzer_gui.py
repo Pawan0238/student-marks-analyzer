@@ -1,6 +1,10 @@
 import tkinter as tk
 from tkinter import messagebox, filedialog
 import matplotlib.pyplot as plt
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+
+students = []
 
 def calculate_grade(percentage):
     if percentage >= 90:
@@ -16,139 +20,145 @@ def calculate_grade(percentage):
     else:
         return 'F'
 
-students = []
-
 def add_student():
+    name = name_entry.get()
+    marks = marks_entry.get()
+
+    if not name or not marks:
+        messagebox.showwarning("Input Error", "Please enter both name and marks.")
+        return
+
     try:
-        name = entry_name.get().strip()
-        marks_str = entry_marks.get().strip()
-        if not name:
-            messagebox.showerror("Input Error", "Please enter student name.")
-            return
-        if not marks_str:
-            messagebox.showerror("Input Error", "Please enter marks separated by commas.")
-            return
-
-        marks_list = [float(mark.strip()) for mark in marks_str.split(',') if mark.strip()]
-        if not marks_list:
-            messagebox.showerror("Input Error", "Please enter valid marks.")
-            return
-
-        total = sum(marks_list)
-        percentage = total / len(marks_list)
-        grade = calculate_grade(percentage)
-
-        student = {
-            'name': name,
-            'total': total,
-            'percentage': percentage,
-            'grade': grade
-        }
-        students.append(student)
-
-        # Update result label
-        result = f"Added: {name} | Percentage: {percentage:.2f}% | Grade: {grade}"
-        label_result.config(text=result)
-
-        # Clear inputs
-        entry_name.delete(0, tk.END)
-        entry_marks.delete(0, tk.END)
-
+        marks_list = list(map(float, marks.split(',')))
     except ValueError:
-        messagebox.showerror("Input Error", "Please enter valid numeric marks separated by commas.")
+        messagebox.showwarning("Input Error", "Please enter valid marks separated by commas.")
+        return
+
+    total = sum(marks_list)
+    percentage = total / len(marks_list)
+    grade = calculate_grade(percentage)
+
+    student = {
+        'name': name,
+        'marks': marks_list,
+        'total': total,
+        'percentage': percentage,
+        'grade': grade
+    }
+    students.append(student)
+    messagebox.showinfo("Success", f"Record added for {name}.")
+    name_entry.delete(0, tk.END)
+    marks_entry.delete(0, tk.END)
 
 def show_report():
     if not students:
-        messagebox.showinfo("No Data", "No students added yet.")
+        messagebox.showinfo("No Data", "No student data to display.")
         return
 
-    report = "STUDENT REPORT\n" + "="*40 + "\n"
+    report = ""
     for s in students:
-        report += (f"Name: {s['name']}\n"
-                   f"Total Marks: {s['total']}\n"
-                   f"Percentage: {s['percentage']:.2f}%\n"
-                   f"Grade: {s['grade']}\n"
-                   + "-"*40 + "\n")
+        report += f"Name       : {s['name']}\n"
+        report += f"Marks      : {s['marks']}\n"
+        report += f"Total      : {s['total']}\n"
+        report += f"Percentage : {s['percentage']:.2f}%\n"
+        report += f"Grade      : {s['grade']}\n\n"
 
-    # Find topper and lowest scorer
     topper = max(students, key=lambda x: x['percentage'])
     lowest = min(students, key=lambda x: x['percentage'])
 
-    report += f"\n🏆 TOPPER: {topper['name']} with {topper['percentage']:.2f}% ({topper['grade']})\n"
-    report += f"📉 LOWEST SCORER: {lowest['name']} with {lowest['percentage']:.2f}% ({lowest['grade']})\n"
+    report += f"Topper        : {topper['name']} ({topper['percentage']:.2f}%)\n"
+    report += f"Lowest Scorer : {lowest['name']} ({lowest['percentage']:.2f}%)"
 
-    # Show report in messagebox (or could be a popup window)
     messagebox.showinfo("Student Report", report)
 
 def save_report():
     if not students:
-        messagebox.showinfo("No Data", "No students added yet.")
+        messagebox.showinfo("No Data", "No student data to save.")
         return
 
-    report = "STUDENT REPORT\n" + "="*40 + "\n"
-    for s in students:
-        report += (f"Name: {s['name']}\n"
-                   f"Total Marks: {s['total']}\n"
-                   f"Percentage: {s['percentage']:.2f}%\n"
-                   f"Grade: {s['grade']}\n"
-                   + "-"*40 + "\n")
+    file_path = filedialog.asksaveasfilename(defaultextension=".pdf", title="Save Report As PDF",
+                                             filetypes=[("PDF files", "*.pdf")])
+    if not file_path:
+        return
+
+    c = canvas.Canvas(file_path, pagesize=A4)
+    width, height = A4
+    y = height - 50
+
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(50, y, "Student Marks Report")
+    y -= 30
+
+    c.setFont("Helvetica", 12)
+
+    for student in students:
+        c.drawString(50, y, f"Name       : {student['name']}")
+        y -= 20
+        c.drawString(50, y, f"Marks      : {student['marks']}")
+        y -= 20
+        c.drawString(50, y, f"Total      : {student['total']}")
+        y -= 20
+        c.drawString(50, y, f"Percentage : {student['percentage']:.2f}%")
+        y -= 20
+        c.drawString(50, y, f"Grade      : {student['grade']}")
+        y -= 30
+
+        if y < 100:
+            c.showPage()
+            y = height - 50
+            c.setFont("Helvetica", 12)
 
     topper = max(students, key=lambda x: x['percentage'])
     lowest = min(students, key=lambda x: x['percentage'])
 
-    report += f"\n🏆 TOPPER: {topper['name']} with {topper['percentage']:.2f}% ({topper['grade']})\n"
-    report += f"📉 LOWEST SCORER: {lowest['name']} with {lowest['percentage']:.2f}% ({lowest['grade']})\n"
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(50, y, f"Topper        : {topper['name']} ({topper['percentage']:.2f}%)")
+    y -= 20
+    c.drawString(50, y, f"Lowest Scorer : {lowest['name']} ({lowest['percentage']:.2f}%)")
 
-    # Ask for file location
-    filepath = filedialog.asksaveasfilename(defaultextension=".txt",
-                                            filetypes=[("Text files","*.txt"), ("All files","*.*")])
-    if filepath:
-        with open(filepath, "w") as f:
-            f.write(report)
-        messagebox.showinfo("Saved", f"Report saved to:\n{filepath}")
+    c.save()
+    messagebox.showinfo("Success", "Report saved as PDF successfully!")
 
-def plot_graph():
+def show_graph():
     if not students:
-        messagebox.showinfo("No Data", "No students added yet.")
+        messagebox.showinfo("No Data", "No data to plot.")
         return
 
     names = [s['name'] for s in students]
     percentages = [s['percentage'] for s in students]
 
-    plt.figure(figsize=(8,5))
+    plt.figure(figsize=(10, 5))
     plt.bar(names, percentages, color='skyblue')
-    plt.xlabel('Students')
+    plt.xlabel('Student Name')
     plt.ylabel('Percentage')
-    plt.title('Student Percentages')
+    plt.title('Student Performance')
     plt.ylim(0, 100)
     plt.grid(axis='y')
+    plt.tight_layout()
     plt.show()
 
-# Tkinter setup
+# GUI Setup
 root = tk.Tk()
 root.title("Student Marks Analyzer")
+root.geometry("500x400")
+root.config(bg="#f0f4f7")
 
-tk.Label(root, text="Student Name:").grid(row=0, column=0, padx=10, pady=10, sticky='w')
-entry_name = tk.Entry(root, width=30)
-entry_name.grid(row=0, column=1, padx=10, pady=10)
+frame = tk.Frame(root, padx=20, pady=20, bg="#ffffff", bd=2, relief="groove")
+frame.pack(pady=30)
 
-tk.Label(root, text="Marks (comma separated):").grid(row=1, column=0, padx=10, pady=10, sticky='w')
-entry_marks = tk.Entry(root, width=30)
-entry_marks.grid(row=1, column=1, padx=10, pady=10)
+# Labels and Entries
+tk.Label(frame, text="Student Name:", bg="#ffffff").grid(row=0, column=0, pady=5, sticky='e')
+name_entry = tk.Entry(frame, width=30)
+name_entry.grid(row=0, column=1, pady=5)
 
-btn_add = tk.Button(root, text="Add Student", command=add_student)
-btn_add.grid(row=2, column=0, columnspan=2, pady=5, sticky='ew')
+tk.Label(frame, text="Marks (comma separated):", bg="#ffffff").grid(row=1, column=0, pady=5, sticky='e')
+marks_entry = tk.Entry(frame, width=30)
+marks_entry.grid(row=1, column=1, pady=5)
 
-btn_report = tk.Button(root, text="Show Report", command=show_report)
-btn_report.grid(row=3, column=0, pady=5, sticky='ew')
-
-btn_save = tk.Button(root, text="Save Report to File", command=save_report)
-btn_save.grid(row=3, column=1, pady=5, sticky='ew')
-
-btn_graph = tk.Button(root, text="Show Percentage Graph", command=plot_graph)
-btn_graph.grid(row=4, column=0, columnspan=2, pady=10, sticky='ew')
-
-label_result = tk.Label(root, text="", justify='left', font=('Arial', 12))
-label_result.grid(row=5, column=0, columnspan=2, padx=10, pady=10)
+# Buttons
+tk.Button(frame, text="Add Student", command=add_student, bg="#4caf50", fg="white", width=20).grid(row=2, columnspan=2, pady=10)
+tk.Button(frame, text="Show Report", command=show_report, width=20).grid(row=3, columnspan=2, pady=5)
+tk.Button(frame, text="Save Report to File", command=save_report, width=20).grid(row=4, columnspan=2, pady=5)
+tk.Button(frame, text="Show Percentage Graph", command=show_graph, width=20).grid(row=5, columnspan=2, pady=5)
 
 root.mainloop()
