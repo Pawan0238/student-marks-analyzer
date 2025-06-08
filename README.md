@@ -1,7 +1,7 @@
 # Student Marks Analyzer (GUI Version)
 
 A Python GUI application built with Tkinter to analyze student marks, calculate grades, and visualize results.  
-Designed for beginners learning Python and GUI development, with features to manage multiple students, generate reports, save data to a file, and display charts.
+Designed for beginners learning Python and GUI development, with features to manage multiple students, generate reports, save data to a pdf file, and display charts.
 
 ---
 
@@ -30,3 +30,6 @@ Usage
 5.Click Show Report to see all students’ marks, grades, topper, and lowest scorer.
 6.Click Save Report to File to save the report as a .txt file on your computer.
 7.Click Show Percentage Graph to visualize the students’ percentages in a bar chart.
+
+
+  
